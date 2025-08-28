@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Separador de XML por Evento</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-6">
+  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-3xl mt-10">
+    <h1 class="text-2xl font-bold text-gray-700 mb-6 text-center">📂 Separador de XML por Evento</h1>
+
+    <!-- Upload -->
+    <div class="mb-6">
+      <label class="block text-gray-600 font-medium mb-2">Selecione um ou mais arquivos ZIP:</label>
+      <input type="file" id="zipInput" multiple accept=".zip"
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+
+    <!-- Status / Total -->
+    <div id="status" class="text-gray-700 mb-4"></div>
+
+    <!-- Tipos detectados -->
+    <div id="eventTypesSection" class="hidden">
+      <h2 class="text-lg font-semibold text-gray-700 mb-4">Tipos de eventos encontrados:</h2>
+      <div id="eventTypesList" class="grid grid-cols-2 gap-3"></div>
+
+      <button id="generateBtn" disabled
+        class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md disabled:opacity-50">
+        📦 Gerar ZIPs Separados
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const zipInput = document.getElementById("zipInput");
+    const eventTypesSection = document.getElementById("eventTypesSection");
+    const eventTypesList = document.getElementById("eventTypesList");
+    const generateBtn = document.getElementById("generateBtn");
+    const statusDiv = document.getElementById("status");
+
+    let filesByEvent = {};
+
+    zipInput.addEventListener("change", async (e) => {
+      filesByEvent = {};
+      eventTypesList.innerHTML = "";
+      eventTypesSection.classList.add("hidden");
+      generateBtn.disabled = true;
+      statusDiv.textContent = "📂 Lendo arquivos ZIP... Aguarde";
+
+      const files = e.target.files;
+      if (!files.length) {
+        statusDiv.textContent = "Nenhum arquivo selecionado.";
+        return;
+      }
+
+      let totalXML = 0;
+
+      for (const file of files) {
+        const data = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(data);
+
+        for (const fileName of Object.keys(zip.files)) {
+          if (fileName.endsWith(".xml")) {
+            const match = fileName.match(/S-\d{4}/);
+            if (match) {
+              const eventType = match[0].replace("-", "");
+              if (!filesByEvent[eventType]) filesByEvent[eventType] = [];
+              // Mantemos o nome original
+              filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob: await zip.files[fileName].async("blob") });
+              totalXML++;
+            }
+          }
+        }
+      }
+
+      const eventTypes = Object.keys(filesByEvent);
+      if (eventTypes.length === 0) {
+        statusDiv.textContent = "Nenhum arquivo XML encontrado nos ZIPs selecionados.";
+        return;
+      }
+
+      // Mostra status com total
+      statusDiv.textContent = `✅ Total de arquivos XML: ${totalXML} em ${eventTypes.length} tipos de evento. Marque os desejados abaixo.`;
+
+      // Mostra checkboxes
+      eventTypesSection.classList.remove("hidden");
+      Object.keys(filesByEvent).sort().forEach(type => {
+        const div = document.createElement("div");
+        div.className = "flex items-center space-x-2 bg-gray-50 p-3 rounded-lg shadow-sm";
+        div.innerHTML = `
+          <input type="checkbox" id="chk-${type}" value="${type}" class="w-4 h-4 text-blue-600 rounded">
+          <label for="chk-${type}" class="text-gray-700 font-medium">${type} (${filesByEvent[type].length} arquivos)</label>
+        `;
+        eventTypesList.appendChild(div);
+      });
+    });
+
+    // Habilita botão quando marcar algo
+    eventTypesList.addEventListener("change", () => {
+      const anyChecked = eventTypesList.querySelectorAll("input:checked").length > 0;
+      generateBtn.disabled = !anyChecked;
+    });
+
+    // Gera os ZIPs mantendo nomes originais
+    generateBtn.addEventListener("click", async () => {
+      const selected = [...eventTypesList.querySelectorAll("input:checked")].map(c => c.value);
+
+      for (const type of selected) {
+        const zip = new JSZip();
+        filesByEvent[type].forEach(fileObj => {
+          zip.file(fileObj.name, fileObj.blob);
+        });
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, `${type}.zip`);
+      }
+
+      statusDiv.textContent = `✅ Download concluído para: ${selected.join(", ")}`;
+    });
+  </script>
+</body>
+</html>

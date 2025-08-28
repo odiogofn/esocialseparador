@@ -6,6 +6,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #progressBar {
+      transition: width 0.3s ease;
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-6">
   <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-3xl mt-10">
@@ -20,8 +25,8 @@
 
     <!-- Barra de progresso -->
     <div id="progressContainer" class="hidden mb-4">
-      <div class="w-full bg-gray-200 rounded-full h-5">
-        <div id="progressBar" class="bg-blue-600 h-5 rounded-full w-0"></div>
+      <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden">
+        <div id="progressBar" class="bg-blue-600 h-5 w-0"></div>
       </div>
       <div class="flex justify-between text-sm mt-1">
         <span id="progressPercent">0%</span>
@@ -82,54 +87,51 @@
         return;
       }
 
-      let totalXML = 0;
-      let processedXML = 0;
       const startTime = Date.now();
-      const zipObjects = [];
 
-      // Pré-carrega todos os ZIPs
-      for (const file of files) {
+      // Carrega todos os ZIPs em paralelo
+      const zipObjects = await Promise.all([...files].map(async file => {
         const data = await file.arrayBuffer();
-        const zip = await JSZip.loadAsync(data);
-        zipObjects.push(zip);
-      }
+        return JSZip.loadAsync(data);
+      }));
 
-      // Conta total de XMLs para a barra de progresso
-      let totalFiles = 0;
+      // Coleta todos os XMLs e conta total
+      const allXMLs = [];
       zipObjects.forEach(zip => {
-        totalFiles += Object.keys(zip.files).filter(f => f.endsWith(".xml")).length;
+        Object.keys(zip.files).forEach(fileName => {
+          if (fileName.endsWith(".xml")) {
+            allXMLs.push({ zip, fileName });
+          }
+        });
       });
 
-      // Processa arquivos com barra de progresso detalhada
-      for (const zip of zipObjects) {
-        for (const fileName of Object.keys(zip.files)) {
-          if (fileName.endsWith(".xml")) {
-            const match = fileName.match(/S-\d{4}/);
-            if (match) {
-              const eventType = match[0].replace("-", "");
-              if (!filesByEvent[eventType]) filesByEvent[eventType] = [];
-              const blob = await zip.files[fileName].async("blob");
-              filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob });
-              totalXML++;
-            }
-            // Atualiza barra de progresso e arquivo atual
-            processedXML++;
-            const percent = Math.round((processedXML / totalFiles) * 100);
-            progressBar.style.width = percent + '%';
-            progressPercent.textContent = percent + '%';
+      const totalFiles = allXMLs.length;
+      let processed = 0;
 
-            const elapsed = (Date.now() - startTime) / 1000;
-            const remaining = Math.round((elapsed / processedXML) * (totalFiles - processedXML));
-            const minutes = Math.floor(remaining / 60);
-            const seconds = remaining % 60;
-            progressTime.textContent = `Estimativa: ${minutes}m ${seconds}s`;
-
-            currentFileDiv.textContent = `Arquivo: ${fileName.split("/").pop()}`;
-            
-            await new Promise(r => setTimeout(r, 0)); // força atualização visual
-          }
+      // Processa todos os XMLs
+      await Promise.all(allXMLs.map(async ({ zip, fileName }) => {
+        const match = fileName.match(/S-\d{4}/);
+        if (match) {
+          const eventType = match[0].replace("-", "");
+          if (!filesByEvent[eventType]) filesByEvent[eventType] = [];
+          const blob = await zip.files[fileName].async("blob");
+          filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob });
         }
-      }
+
+        // Atualiza barra de progresso
+        processed++;
+        const percent = Math.round((processed / totalFiles) * 100);
+        progressBar.style.width = percent + '%';
+        progressPercent.textContent = percent + '%';
+
+        const elapsed = (Date.now() - startTime) / 1000;
+        const remaining = Math.round((elapsed / processed) * (totalFiles - processed));
+        const minutes = Math.floor(remaining / 60);
+        const seconds = remaining % 60;
+        progressTime.textContent = `Estimativa: ${minutes}m ${seconds}s`;
+
+        currentFileDiv.textContent = `Arquivo: ${fileName.split("/").pop()}`;
+      }));
 
       const eventTypes = Object.keys(filesByEvent);
       if (eventTypes.length === 0) {
@@ -139,7 +141,7 @@
       }
 
       // Mostra status com total
-      statusDiv.textContent = `✅ Total de arquivos XML: ${totalXML} em ${eventTypes.length} tipos de evento. Marque os desejados abaixo.`;
+      statusDiv.textContent = `✅ Total de arquivos XML: ${totalFiles} em ${eventTypes.length} tipos de evento. Marque os desejados abaixo.`;
       progressContainer.classList.add("hidden");
 
       // Mostra checkboxes
@@ -161,17 +163,17 @@
       generateBtn.disabled = !anyChecked;
     });
 
-    // Botão Selecionar todos
+    // Botão Selecionar todos / Desmarcar todos
     selectAllBtn.addEventListener("click", () => {
-      eventTypesList.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true);
-      generateBtn.disabled = true;
-      generateBtn.disabled = false;
+      const checkboxes = eventTypesList.querySelectorAll("input[type=checkbox]");
+      const allChecked = [...checkboxes].every(cb => cb.checked);
+      checkboxes.forEach(cb => cb.checked = !allChecked);
+      generateBtn.disabled = [...checkboxes].some(cb => cb.checked) ? false : true;
     });
 
     // Gera os ZIPs mantendo nomes originais
     generateBtn.addEventListener("click", async () => {
       const selected = [...eventTypesList.querySelectorAll("input:checked")].map(c => c.value);
-
       for (const type of selected) {
         const zip = new JSZip();
         filesByEvent[type].forEach(fileObj => {
@@ -180,7 +182,6 @@
         const content = await zip.generateAsync({ type: "blob" });
         saveAs(content, `${type}.zip`);
       }
-
       statusDiv.textContent = `✅ Download concluído para: ${selected.join(", ")}`;
     });
   </script>

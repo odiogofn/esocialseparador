@@ -12,10 +12,21 @@
     <h1 class="text-2xl font-bold text-gray-700 mb-6 text-center">📂 Separador de XML por Evento</h1>
 
     <!-- Upload -->
-    <div class="mb-6">
+    <div class="mb-4">
       <label class="block text-gray-600 font-medium mb-2">Selecione um ou mais arquivos ZIP:</label>
       <input type="file" id="zipInput" multiple accept=".zip"
         class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    </div>
+
+    <!-- Barra de progresso -->
+    <div id="progressContainer" class="hidden mb-4">
+      <div class="w-full bg-gray-200 rounded-full h-5">
+        <div id="progressBar" class="bg-blue-600 h-5 rounded-full w-0"></div>
+      </div>
+      <div class="flex justify-between text-sm mt-1">
+        <span id="progressPercent">0%</span>
+        <span id="progressTime">Estimativa: --</span>
+      </div>
     </div>
 
     <!-- Status / Total -->
@@ -23,7 +34,10 @@
 
     <!-- Tipos detectados -->
     <div id="eventTypesSection" class="hidden">
-      <h2 class="text-lg font-semibold text-gray-700 mb-4">Tipos de eventos encontrados:</h2>
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-lg font-semibold text-gray-700">Tipos de eventos encontrados:</h2>
+        <button id="selectAllBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded">Selecionar todos</button>
+      </div>
       <div id="eventTypesList" class="grid grid-cols-2 gap-3"></div>
 
       <button id="generateBtn" disabled
@@ -39,6 +53,11 @@
     const eventTypesList = document.getElementById("eventTypesList");
     const generateBtn = document.getElementById("generateBtn");
     const statusDiv = document.getElementById("status");
+    const progressContainer = document.getElementById("progressContainer");
+    const progressBar = document.getElementById("progressBar");
+    const progressPercent = document.getElementById("progressPercent");
+    const progressTime = document.getElementById("progressTime");
+    const selectAllBtn = document.getElementById("selectAllBtn");
 
     let filesByEvent = {};
 
@@ -47,30 +66,61 @@
       eventTypesList.innerHTML = "";
       eventTypesSection.classList.add("hidden");
       generateBtn.disabled = true;
+      progressContainer.classList.remove("hidden");
+      progressBar.style.width = '0%';
+      progressPercent.textContent = '0%';
+      progressTime.textContent = 'Estimativa: --';
       statusDiv.textContent = "📂 Lendo arquivos ZIP... Aguarde";
 
       const files = e.target.files;
       if (!files.length) {
         statusDiv.textContent = "Nenhum arquivo selecionado.";
+        progressContainer.classList.add("hidden");
         return;
       }
 
       let totalXML = 0;
+      let processedXML = 0;
+      const startTime = Date.now();
+      const zipObjects = [];
 
+      // Pré-carrega todos os ZIPs
       for (const file of files) {
         const data = await file.arrayBuffer();
         const zip = await JSZip.loadAsync(data);
+        zipObjects.push(zip);
+      }
 
+      // Conta total de XMLs para a barra de progresso
+      let totalFiles = 0;
+      zipObjects.forEach(zip => {
+        totalFiles += Object.keys(zip.files).filter(f => f.endsWith(".xml")).length;
+      });
+
+      // Processa arquivos com barra de progresso
+      for (const zip of zipObjects) {
         for (const fileName of Object.keys(zip.files)) {
           if (fileName.endsWith(".xml")) {
             const match = fileName.match(/S-\d{4}/);
             if (match) {
               const eventType = match[0].replace("-", "");
               if (!filesByEvent[eventType]) filesByEvent[eventType] = [];
-              // Mantemos o nome original
-              filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob: await zip.files[fileName].async("blob") });
+              const blob = await zip.files[fileName].async("blob");
+              filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob });
               totalXML++;
             }
+            // Atualiza barra de progresso
+            processedXML++;
+            const percent = Math.round((processedXML / totalFiles) * 100);
+            progressBar.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+
+            const elapsed = (Date.now() - startTime) / 1000; // em segundos
+            const remaining = Math.round((elapsed / processedXML) * (totalFiles - processedXML));
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
+            progressTime.textContent = `Estimativa: ${minutes}m ${seconds}s`;
+            await new Promise(r => setTimeout(r, 0)); // força atualização visual
           }
         }
       }
@@ -78,11 +128,13 @@
       const eventTypes = Object.keys(filesByEvent);
       if (eventTypes.length === 0) {
         statusDiv.textContent = "Nenhum arquivo XML encontrado nos ZIPs selecionados.";
+        progressContainer.classList.add("hidden");
         return;
       }
 
       // Mostra status com total
       statusDiv.textContent = `✅ Total de arquivos XML: ${totalXML} em ${eventTypes.length} tipos de evento. Marque os desejados abaixo.`;
+      progressContainer.classList.add("hidden");
 
       // Mostra checkboxes
       eventTypesSection.classList.remove("hidden");
@@ -101,6 +153,12 @@
     eventTypesList.addEventListener("change", () => {
       const anyChecked = eventTypesList.querySelectorAll("input:checked").length > 0;
       generateBtn.disabled = !anyChecked;
+    });
+
+    // Botão Selecionar todos
+    selectAllBtn.addEventListener("click", () => {
+      eventTypesList.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true);
+      generateBtn.disabled = false;
     });
 
     // Gera os ZIPs mantendo nomes originais

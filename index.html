@@ -27,6 +27,7 @@
         <span id="progressPercent">0%</span>
         <span id="progressTime">Estimativa: --</span>
       </div>
+      <div class="text-gray-600 text-sm mt-1" id="currentFile">Arquivo: --</div>
     </div>
 
     <!-- Status / Total -->
@@ -57,6 +58,7 @@
     const progressBar = document.getElementById("progressBar");
     const progressPercent = document.getElementById("progressPercent");
     const progressTime = document.getElementById("progressTime");
+    const currentFileDiv = document.getElementById("currentFile");
     const selectAllBtn = document.getElementById("selectAllBtn");
 
     let filesByEvent = {};
@@ -70,6 +72,7 @@
       progressBar.style.width = '0%';
       progressPercent.textContent = '0%';
       progressTime.textContent = 'Estimativa: --';
+      currentFileDiv.textContent = 'Arquivo: --';
       statusDiv.textContent = "📂 Lendo arquivos ZIP... Aguarde";
 
       const files = e.target.files;
@@ -97,7 +100,7 @@
         totalFiles += Object.keys(zip.files).filter(f => f.endsWith(".xml")).length;
       });
 
-      // Processa arquivos com barra de progresso
+      // Processa arquivos com barra de progresso detalhada
       for (const zip of zipObjects) {
         for (const fileName of Object.keys(zip.files)) {
           if (fileName.endsWith(".xml")) {
@@ -109,17 +112,20 @@
               filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob });
               totalXML++;
             }
-            // Atualiza barra de progresso
+            // Atualiza barra de progresso e arquivo atual
             processedXML++;
             const percent = Math.round((processedXML / totalFiles) * 100);
             progressBar.style.width = percent + '%';
             progressPercent.textContent = percent + '%';
 
-            const elapsed = (Date.now() - startTime) / 1000; // em segundos
+            const elapsed = (Date.now() - startTime) / 1000;
             const remaining = Math.round((elapsed / processedXML) * (totalFiles - processedXML));
             const minutes = Math.floor(remaining / 60);
             const seconds = remaining % 60;
             progressTime.textContent = `Estimativa: ${minutes}m ${seconds}s`;
+
+            currentFileDiv.textContent = `Arquivo: ${fileName.split("/").pop()}`;
+            
             await new Promise(r => setTimeout(r, 0)); // força atualização visual
           }
         }
@@ -158,6 +164,7 @@
     // Botão Selecionar todos
     selectAllBtn.addEventListener("click", () => {
       eventTypesList.querySelectorAll("input[type=checkbox]").forEach(cb => cb.checked = true);
+      generateBtn.disabled = true;
       generateBtn.disabled = false;
     });
 

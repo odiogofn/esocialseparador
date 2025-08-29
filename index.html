@@ -1,189 +1,167 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Separador de XML por Evento</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    #progressBar {
-      transition: width 0.3s ease;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Leitor de ZIPs S-XX</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 20px; }
+h2 { text-align: center; margin-bottom: 15px; }
+#dropArea { border: 2px dashed #4caf50; border-radius: 10px; padding: 30px; text-align: center; cursor: pointer; color: #555; transition: 0.3s; margin-bottom: 15px; }
+#dropArea.hover { background: #e8f5e9; border-color: #45a049; }
+button { padding: 6px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background: #4caf50; color: white; transition: 0.2s; }
+button:hover { background: #45a049; }
+.progress-bar { width: 100%; background: #eee; border-radius: 8px; overflow: hidden; height: 18px; margin-bottom: 10px; }
+.progress { height: 18px; width: 0%; background: #4caf50; transition: width 0.2s; }
+.zip-container { background: #fff; padding: 15px; margin: 5px; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.1); flex: 1 1 200px; display: flex; justify-content: space-between; align-items: center; }
+.zip-container button { margin: 0; }
+.zip-list { display: flex; flex-wrap: wrap; margin-top: 10px; }
+.status { font-size: 0.95em; color: #333; margin: 3px 0; }
+.error { color: red; font-weight: bold; margin-top: 10px; }
+</style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start p-6">
-  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-3xl mt-10">
-    <h1 class="text-2xl font-bold text-gray-700 mb-6 text-center">📂 Separador de XML por Evento</h1>
+<body>
+<h2>Leitor de ZIPs S-XX</h2>
 
-    <!-- Upload -->
-    <div class="mb-4">
-      <label class="block text-gray-600 font-medium mb-2">Selecione um ou mais arquivos ZIP:</label>
-      <input type="file" id="zipInput" multiple accept=".zip"
-        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
-    </div>
+<div id="dropArea">Clique ou arraste arquivos ZIP aqui</div>
+<input type="file" id="zipInput" multiple accept=".zip" style="display:none;">
 
-    <!-- Barra de progresso -->
-    <div id="progressContainer" class="hidden mb-4">
-      <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden">
-        <div id="progressBar" class="bg-blue-600 h-5 w-0"></div>
-      </div>
-      <div class="flex justify-between text-sm mt-1">
-        <span id="progressPercent">0%</span>
-        <span id="progressTime">Estimativa: --</span>
-      </div>
-      <div class="text-gray-600 text-sm mt-1" id="currentFile">Arquivo: --</div>
-    </div>
+<div class="progress-bar"><div class="progress" id="overallProgressBar"></div></div>
+<div id="statusArea" class="status"></div>
+<div id="fileList" class="zip-list"></div>
+<div id="errors" class="error"></div>
 
-    <!-- Status / Total -->
-    <div id="status" class="text-gray-700 mb-4"></div>
+<div class="controls">
+    <button id="downloadAll">Download todos selecionados</button>
+</div>
 
-    <!-- Tipos detectados -->
-    <div id="eventTypesSection" class="hidden">
-      <div class="flex justify-between items-center mb-2">
-        <h2 class="text-lg font-semibold text-gray-700">Tipos de eventos encontrados:</h2>
-        <button id="selectAllBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded">Selecionar todos</button>
-      </div>
-      <div id="eventTypesList" class="grid grid-cols-2 gap-3"></div>
+<script>
+let zipGroups = {};
+let zipSelection = {};
+let arquivosCorrompidos = [];
 
-      <button id="generateBtn" disabled
-        class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md disabled:opacity-50">
-        📦 Gerar ZIPs Separados
-      </button>
-    </div>
-  </div>
+const dropArea = document.getElementById('dropArea');
+const zipInput = document.getElementById('zipInput');
+const overallProgressBar = document.getElementById('overallProgressBar');
+const statusArea = document.getElementById('statusArea');
+const fileList = document.getElementById('fileList');
+const errorsDiv = document.getElementById('errors');
 
-  <script>
-    const zipInput = document.getElementById("zipInput");
-    const eventTypesSection = document.getElementById("eventTypesSection");
-    const eventTypesList = document.getElementById("eventTypesList");
-    const generateBtn = document.getElementById("generateBtn");
-    const statusDiv = document.getElementById("status");
-    const progressContainer = document.getElementById("progressContainer");
-    const progressBar = document.getElementById("progressBar");
-    const progressPercent = document.getElementById("progressPercent");
-    const progressTime = document.getElementById("progressTime");
-    const currentFileDiv = document.getElementById("currentFile");
-    const selectAllBtn = document.getElementById("selectAllBtn");
+dropArea.addEventListener('click', ()=>zipInput.click());
+dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('hover'); });
+dropArea.addEventListener('dragleave', e=>{ dropArea.classList.remove('hover'); });
+dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('hover'); handleFiles(e.dataTransfer.files); });
 
-    let filesByEvent = {};
+zipInput.addEventListener('change', e=>handleFiles(e.target.files));
 
-    zipInput.addEventListener("change", async (e) => {
-      filesByEvent = {};
-      eventTypesList.innerHTML = "";
-      eventTypesSection.classList.add("hidden");
-      generateBtn.disabled = true;
-      progressContainer.classList.remove("hidden");
-      progressBar.style.width = '0%';
-      progressPercent.textContent = '0%';
-      progressTime.textContent = 'Estimativa: --';
-      currentFileDiv.textContent = 'Arquivo: --';
-      statusDiv.textContent = "📂 Lendo arquivos ZIP... Aguarde";
+async function handleFiles(files){
+    zipGroups = {};
+    zipSelection = {};
+    arquivosCorrompidos = [];
+    fileList.innerHTML = '';
+    statusArea.innerHTML = '';
+    errorsDiv.innerHTML = '';
+    overallProgressBar.style.width = '0%';
 
-      const files = e.target.files;
-      if (!files.length) {
-        statusDiv.textContent = "Nenhum arquivo selecionado.";
-        progressContainer.classList.add("hidden");
-        return;
-      }
+    let totalFiles = 0;
+    for(const file of files){
+        try{
+            const zip = new JSZip();
+            const content = await file.arrayBuffer();
+            const zipContent = await zip.loadAsync(content);
+            totalFiles += Object.keys(zipContent.files).length;
+        } catch(e){ totalFiles += 1; }
+    }
 
-      const startTime = Date.now();
+    let processedFiles = 0;
+    const startTime = Date.now();
 
-      // Carrega todos os ZIPs em paralelo
-      const zipObjects = await Promise.all([...files].map(async file => {
-        const data = await file.arrayBuffer();
-        return JSZip.loadAsync(data);
-      }));
+    for(const file of files){
+        try{
+            const zip = new JSZip();
+            const content = await file.arrayBuffer();
+            const zipContent = await zip.loadAsync(content);
 
-      // Coleta todos os XMLs e conta total
-      const allXMLs = [];
-      zipObjects.forEach(zip => {
-        Object.keys(zip.files).forEach(fileName => {
-          if (fileName.endsWith(".xml")) {
-            allXMLs.push({ zip, fileName });
-          }
-        });
-      });
+            for(const [fullPath, zipEntry] of Object.entries(zipContent.files)){
+                if(!zipEntry.dir){
+                    const fileName = zipEntry.name.split("/").pop();
+                    try{
+                        const blob = await zipEntry.async("blob");
+                        const match = fileName.match(/S-?\d+/i);
+                        if(match){
+                            const tipo = match[0].toUpperCase();
+                            if(!zipGroups[tipo]) zipGroups[tipo] = new JSZip();
+                            zipGroups[tipo].file(fileName, blob);
+                        }
+                    } catch(errFile){
+                        arquivosCorrompidos.push(fileName);
+                    }
+                }
+                processedFiles++;
+                const percent = ((processedFiles/totalFiles)*100).toFixed(0);
+                const elapsed = (Date.now()-startTime)/1000;
+                const estTime = ((elapsed/processedFiles)*(totalFiles-processedFiles)).toFixed(1);
+                overallProgressBar.style.width = percent + "%";
+                statusArea.textContent = `Progresso: ${percent}% | Tempo restante estimado: ${estTime}s`;
+            }
 
-      const totalFiles = allXMLs.length;
-      let processed = 0;
-
-      // Processa todos os XMLs
-      await Promise.all(allXMLs.map(async ({ zip, fileName }) => {
-        const match = fileName.match(/S-\d{4}/);
-        if (match) {
-          const eventType = match[0].replace("-", "");
-          if (!filesByEvent[eventType]) filesByEvent[eventType] = [];
-          const blob = await zip.files[fileName].async("blob");
-          filesByEvent[eventType].push({ name: fileName.split("/").pop(), blob });
+        } catch(err){
+            arquivosCorrompidos.push(file.name);
+            processedFiles++;
+            const percent = ((processedFiles/totalFiles)*100).toFixed(0);
+            const elapsed = (Date.now()-startTime)/1000;
+            const estTime = ((elapsed/processedFiles)*(totalFiles-processedFiles)).toFixed(1);
+            overallProgressBar.style.width = percent + "%";
+            statusArea.textContent = `Progresso: ${percent}% | Tempo restante estimado: ${estTime}s`;
         }
+    }
 
-        // Atualiza barra de progresso
-        processed++;
-        const percent = Math.round((processed / totalFiles) * 100);
-        progressBar.style.width = percent + '%';
-        progressPercent.textContent = percent + '%';
+    statusArea.textContent = "Leitura concluída ✅";
 
-        const elapsed = (Date.now() - startTime) / 1000;
-        const remaining = Math.round((elapsed / processed) * (totalFiles - processed));
-        const minutes = Math.floor(remaining / 60);
-        const seconds = remaining % 60;
-        progressTime.textContent = `Estimativa: ${minutes}m ${seconds}s`;
+    fileList.innerHTML = "";
+    Object.keys(zipGroups).forEach(tipo=>{
+        zipSelection[tipo] = true;
+        const zipObj = zipGroups[tipo];
+        const fileCount = Object.keys(zipObj.files).length;
 
-        currentFileDiv.textContent = `Arquivo: ${fileName.split("/").pop()}`;
-      }));
-
-      const eventTypes = Object.keys(filesByEvent);
-      if (eventTypes.length === 0) {
-        statusDiv.textContent = "Nenhum arquivo XML encontrado nos ZIPs selecionados.";
-        progressContainer.classList.add("hidden");
-        return;
-      }
-
-      // Mostra status com total
-      statusDiv.textContent = `✅ Total de arquivos XML: ${totalFiles} em ${eventTypes.length} tipos de evento. Marque os desejados abaixo.`;
-      progressContainer.classList.add("hidden");
-
-      // Mostra checkboxes
-      eventTypesSection.classList.remove("hidden");
-      Object.keys(filesByEvent).sort().forEach(type => {
-        const div = document.createElement("div");
-        div.className = "flex items-center space-x-2 bg-gray-50 p-3 rounded-lg shadow-sm";
-        div.innerHTML = `
-          <input type="checkbox" id="chk-${type}" value="${type}" class="w-4 h-4 text-blue-600 rounded">
-          <label for="chk-${type}" class="text-gray-700 font-medium">${type} (${filesByEvent[type].length} arquivos)</label>
+        const container = document.createElement("div");
+        container.className = "zip-container";
+        container.innerHTML = `
+            <label><input type="checkbox" id="chk-${tipo}" checked> <strong>${tipo}.zip</strong> (${fileCount} arquivos)</label>
+            <button id="download-${tipo}">Download</button>
         `;
-        eventTypesList.appendChild(div);
-      });
-    });
+        fileList.appendChild(container);
 
-    // Habilita botão quando marcar algo
-    eventTypesList.addEventListener("change", () => {
-      const anyChecked = eventTypesList.querySelectorAll("input:checked").length > 0;
-      generateBtn.disabled = !anyChecked;
-    });
-
-    // Botão Selecionar todos / Desmarcar todos
-    selectAllBtn.addEventListener("click", () => {
-      const checkboxes = eventTypesList.querySelectorAll("input[type=checkbox]");
-      const allChecked = [...checkboxes].every(cb => cb.checked);
-      checkboxes.forEach(cb => cb.checked = !allChecked);
-      generateBtn.disabled = [...checkboxes].some(cb => cb.checked) ? false : true;
-    });
-
-    // Gera os ZIPs mantendo nomes originais
-    generateBtn.addEventListener("click", async () => {
-      const selected = [...eventTypesList.querySelectorAll("input:checked")].map(c => c.value);
-      for (const type of selected) {
-        const zip = new JSZip();
-        filesByEvent[type].forEach(fileObj => {
-          zip.file(fileObj.name, fileObj.blob);
+        document.getElementById(`chk-${tipo}`).addEventListener("change", e=>{
+            zipSelection[tipo] = e.target.checked;
         });
-        const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, `${type}.zip`);
-      }
-      statusDiv.textContent = `✅ Download concluído para: ${selected.join(", ")}`;
+
+        document.getElementById(`download-${tipo}`).addEventListener("click", async ()=>{
+            const blob = await zipObj.generateAsync({type:"blob"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `${tipo}.zip`;
+            a.click();
+        });
     });
-  </script>
+
+    if(arquivosCorrompidos.length>0){
+        errorsDiv.innerHTML = "<strong>Não foi possível ler os seguintes arquivos:</strong><br>" + arquivosCorrompidos.join("<br>");
+    }
+}
+
+document.getElementById("downloadAll").addEventListener("click", async ()=>{
+    const selectedTypes = Object.keys(zipSelection).filter(tipo=>zipSelection[tipo]);
+    if(selectedTypes.length === 0){ alert("Nenhum ZIP selecionado."); return; }
+    for(const tipo of selectedTypes){
+        const zipObj = zipGroups[tipo];
+        const blob = await zipObj.generateAsync({type:"blob"});
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${tipo}.zip`;
+        a.click();
+    }
+});
+</script>
 </body>
 </html>

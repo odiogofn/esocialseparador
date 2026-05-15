@@ -1,167 +1,1031 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Leitor de ZIPs S-XX</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>eSocial Organizer</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
 <style>
-body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 20px; }
-h2 { text-align: center; margin-bottom: 15px; }
-#dropArea { border: 2px dashed #4caf50; border-radius: 10px; padding: 30px; text-align: center; cursor: pointer; color: #555; transition: 0.3s; margin-bottom: 15px; }
-#dropArea.hover { background: #e8f5e9; border-color: #45a049; }
-button { padding: 6px 15px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background: #4caf50; color: white; transition: 0.2s; }
-button:hover { background: #45a049; }
-.progress-bar { width: 100%; background: #eee; border-radius: 8px; overflow: hidden; height: 18px; margin-bottom: 10px; }
-.progress { height: 18px; width: 0%; background: #4caf50; transition: width 0.2s; }
-.zip-container { background: #fff; padding: 15px; margin: 5px; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.1); flex: 1 1 200px; display: flex; justify-content: space-between; align-items: center; }
-.zip-container button { margin: 0; }
-.zip-list { display: flex; flex-wrap: wrap; margin-top: 10px; }
-.status { font-size: 0.95em; color: #333; margin: 3px 0; }
-.error { color: red; font-weight: bold; margin-top: 10px; }
-</style>
-</head>
-<body>
-<h2>Leitor de ZIPs S-XX</h2>
 
-<div id="dropArea">Clique ou arraste arquivos ZIP aqui</div>
-<input type="file" id="zipInput" multiple accept=".zip" style="display:none;">
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,Arial,sans-serif;
+}
 
-<div class="progress-bar"><div class="progress" id="overallProgressBar"></div></div>
-<div id="statusArea" class="status"></div>
-<div id="fileList" class="zip-list"></div>
-<div id="errors" class="error"></div>
+body{
+    height:100vh;
 
-<div class="controls">
-    <button id="downloadAll">Download todos selecionados</button>
-</div>
+    background:
+    radial-gradient(circle at top left,#1e3a8a 0%,transparent 25%),
+    radial-gradient(circle at bottom right,#0f172a 0%,transparent 25%),
+    #020617;
 
-<script>
-let zipGroups = {};
-let zipSelection = {};
-let arquivosCorrompidos = [];
+    color:white;
 
-const dropArea = document.getElementById('dropArea');
-const zipInput = document.getElementById('zipInput');
-const overallProgressBar = document.getElementById('overallProgressBar');
-const statusArea = document.getElementById('statusArea');
-const fileList = document.getElementById('fileList');
-const errorsDiv = document.getElementById('errors');
+    overflow:hidden;
 
-dropArea.addEventListener('click', ()=>zipInput.click());
-dropArea.addEventListener('dragover', e=>{ e.preventDefault(); dropArea.classList.add('hover'); });
-dropArea.addEventListener('dragleave', e=>{ dropArea.classList.remove('hover'); });
-dropArea.addEventListener('drop', e=>{ e.preventDefault(); dropArea.classList.remove('hover'); handleFiles(e.dataTransfer.files); });
+    padding:20px;
+}
 
-zipInput.addEventListener('change', e=>handleFiles(e.target.files));
+.app{
+    width:100%;
+    height:100%;
 
-async function handleFiles(files){
-    zipGroups = {};
-    zipSelection = {};
-    arquivosCorrompidos = [];
-    fileList.innerHTML = '';
-    statusArea.innerHTML = '';
-    errorsDiv.innerHTML = '';
-    overallProgressBar.style.width = '0%';
+    background:rgba(255,255,255,0.04);
 
-    let totalFiles = 0;
-    for(const file of files){
-        try{
-            const zip = new JSZip();
-            const content = await file.arrayBuffer();
-            const zipContent = await zip.loadAsync(content);
-            totalFiles += Object.keys(zipContent.files).length;
-        } catch(e){ totalFiles += 1; }
+    border:1px solid rgba(255,255,255,0.08);
+
+    border-radius:28px;
+
+    overflow:hidden;
+
+    backdrop-filter:blur(18px);
+
+    box-shadow:
+    0 25px 90px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+
+    display:flex;
+    flex-direction:column;
+}
+
+.header{
+    padding:22px 30px;
+
+    border-bottom:1px solid rgba(255,255,255,0.06);
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+.header h1{
+    font-size:30px;
+    font-weight:800;
+    margin-bottom:6px;
+    letter-spacing:-1px;
+}
+
+.header p{
+    color:#94a3b8;
+    font-size:14px;
+    line-height:1.6;
+}
+
+.badge{
+    background:rgba(59,130,246,0.15);
+
+    border:1px solid rgba(59,130,246,0.25);
+
+    color:#60a5fa;
+
+    padding:12px 16px;
+
+    border-radius:14px;
+
+    font-size:11px;
+    font-weight:700;
+
+    text-transform:uppercase;
+    letter-spacing:1px;
+}
+
+.main{
+    flex:1;
+
+    padding:22px;
+
+    display:grid;
+    grid-template-columns:420px 1fr;
+    gap:22px;
+
+    overflow:hidden;
+}
+
+.card{
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.05);
+
+    border-radius:22px;
+
+    padding:22px;
+
+    overflow:hidden;
+}
+
+.card-title{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:20px;
+}
+
+.upload-area{
+    border:2px dashed rgba(96,165,250,0.35);
+
+    border-radius:22px;
+
+    height:240px;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    text-align:center;
+
+    padding:25px;
+
+    cursor:pointer;
+
+    transition:0.3s;
+
+    background:rgba(255,255,255,0.02);
+}
+
+.upload-area:hover{
+    transform:translateY(-2px);
+
+    border-color:#60a5fa;
+
+    background:rgba(96,165,250,0.06);
+}
+
+.upload-icon{
+    font-size:58px;
+    margin-bottom:16px;
+}
+
+.upload-area h2{
+    font-size:26px;
+    margin-bottom:12px;
+}
+
+.upload-area p{
+    color:#94a3b8;
+    line-height:1.6;
+    font-size:14px;
+}
+
+input{
+    display:none;
+}
+
+.features{
+    display:grid;
+    gap:12px;
+
+    margin-top:18px;
+}
+
+.feature{
+    display:flex;
+    align-items:center;
+    gap:12px;
+
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.05);
+
+    border-radius:16px;
+
+    padding:14px 16px;
+}
+
+.feature-icon{
+    width:40px;
+    height:40px;
+
+    border-radius:12px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    background:rgba(59,130,246,0.15);
+
+    font-size:16px;
+}
+
+.feature span{
+    color:#cbd5e1;
+    font-size:13px;
+}
+
+.right{
+    display:flex;
+    flex-direction:column;
+
+    overflow:hidden;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:14px;
+
+    margin-bottom:16px;
+}
+
+.stat{
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.05);
+
+    border-radius:18px;
+
+    padding:18px;
+}
+
+.stat h4{
+    color:#94a3b8;
+    font-size:12px;
+    margin-bottom:8px;
+    font-weight:500;
+}
+
+.stat span{
+    font-size:28px;
+    font-weight:800;
+}
+
+.progress-card{
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.05);
+
+    border-radius:20px;
+
+    padding:22px;
+
+    margin-bottom:16px;
+}
+
+.progress-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    margin-bottom:14px;
+}
+
+.progress-title{
+    font-size:18px;
+    font-weight:700;
+}
+
+.progress-percent{
+    color:#60a5fa;
+    font-size:18px;
+    font-weight:800;
+}
+
+.progress-bar{
+    width:100%;
+    height:16px;
+
+    background:#0f172a;
+
+    border-radius:999px;
+
+    overflow:hidden;
+
+    margin-bottom:12px;
+}
+
+.progress-fill{
+    width:0%;
+    height:100%;
+
+    border-radius:999px;
+
+    transition:0.4s;
+
+    background:
+    linear-gradient(
+        90deg,
+        #3b82f6,
+        #06b6d4
+    );
+}
+
+.progress-status{
+    color:#94a3b8;
+    font-size:13px;
+}
+
+.logs{
+    flex:1;
+
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.05);
+
+    border-radius:20px;
+
+    padding:20px;
+
+    overflow:hidden;
+
+    display:flex;
+    flex-direction:column;
+}
+
+.logs h3{
+    font-size:18px;
+    margin-bottom:16px;
+}
+
+.log-list{
+    flex:1;
+
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+
+    overflow:auto;
+
+    padding-right:4px;
+}
+
+.log{
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.04);
+
+    border-radius:14px;
+
+    padding:14px 16px;
+
+    animation:fade .3s ease;
+}
+
+.log strong{
+    display:block;
+    margin-bottom:5px;
+}
+
+.log span{
+    color:#94a3b8;
+    font-size:12px;
+    line-height:1.6;
+}
+
+.info{
+    border-left:4px solid #3b82f6;
+}
+
+.success{
+    border-left:4px solid #10b981;
+}
+
+.warning{
+    border-left:4px solid #f59e0b;
+}
+
+.download-area{
+    margin-top:16px;
+}
+
+.btn{
+    width:100%;
+
+    border:none;
+
+    padding:16px;
+
+    border-radius:16px;
+
+    font-size:15px;
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:0.3s;
+
+    background:
+    linear-gradient(
+        90deg,
+        #3b82f6,
+        #06b6d4
+    );
+
+    color:white;
+}
+
+.btn:hover{
+    transform:translateY(-2px);
+    opacity:0.95;
+}
+
+.btn:disabled{
+    opacity:0.45;
+    cursor:not-allowed;
+    transform:none;
+}
+
+.summary{
+    margin-top:14px;
+
+    display:grid;
+    gap:10px;
+
+    max-height:180px;
+    overflow:auto;
+}
+
+.summary-item{
+    background:rgba(255,255,255,0.03);
+
+    border:1px solid rgba(255,255,255,0.04);
+
+    border-radius:14px;
+
+    padding:12px 14px;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.summary-item strong{
+    color:#60a5fa;
+    font-size:14px;
+}
+
+.summary-item span{
+    color:#cbd5e1;
+    font-size:13px;
+}
+
+.footer{
+    padding:14px 24px;
+
+    border-top:1px solid rgba(255,255,255,0.06);
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    flex-wrap:wrap;
+    gap:12px;
+
+    color:#94a3b8;
+
+    font-size:13px;
+}
+
+.footer strong{
+    color:#60a5fa;
+}
+
+@keyframes fade{
+    from{
+        opacity:0;
+        transform:translateY(8px);
     }
-
-    let processedFiles = 0;
-    const startTime = Date.now();
-
-    for(const file of files){
-        try{
-            const zip = new JSZip();
-            const content = await file.arrayBuffer();
-            const zipContent = await zip.loadAsync(content);
-
-            for(const [fullPath, zipEntry] of Object.entries(zipContent.files)){
-                if(!zipEntry.dir){
-                    const fileName = zipEntry.name.split("/").pop();
-                    try{
-                        const blob = await zipEntry.async("blob");
-                        const match = fileName.match(/S-?\d+/i);
-                        if(match){
-                            const tipo = match[0].toUpperCase();
-                            if(!zipGroups[tipo]) zipGroups[tipo] = new JSZip();
-                            zipGroups[tipo].file(fileName, blob);
-                        }
-                    } catch(errFile){
-                        arquivosCorrompidos.push(fileName);
-                    }
-                }
-                processedFiles++;
-                const percent = ((processedFiles/totalFiles)*100).toFixed(0);
-                const elapsed = (Date.now()-startTime)/1000;
-                const estTime = ((elapsed/processedFiles)*(totalFiles-processedFiles)).toFixed(1);
-                overallProgressBar.style.width = percent + "%";
-                statusArea.textContent = `Progresso: ${percent}% | Tempo restante estimado: ${estTime}s`;
-            }
-
-        } catch(err){
-            arquivosCorrompidos.push(file.name);
-            processedFiles++;
-            const percent = ((processedFiles/totalFiles)*100).toFixed(0);
-            const elapsed = (Date.now()-startTime)/1000;
-            const estTime = ((elapsed/processedFiles)*(totalFiles-processedFiles)).toFixed(1);
-            overallProgressBar.style.width = percent + "%";
-            statusArea.textContent = `Progresso: ${percent}% | Tempo restante estimado: ${estTime}s`;
-        }
-    }
-
-    statusArea.textContent = "Leitura concluída ✅";
-
-    fileList.innerHTML = "";
-    Object.keys(zipGroups).forEach(tipo=>{
-        zipSelection[tipo] = true;
-        const zipObj = zipGroups[tipo];
-        const fileCount = Object.keys(zipObj.files).length;
-
-        const container = document.createElement("div");
-        container.className = "zip-container";
-        container.innerHTML = `
-            <label><input type="checkbox" id="chk-${tipo}" checked> <strong>${tipo}.zip</strong> (${fileCount} arquivos)</label>
-            <button id="download-${tipo}">Download</button>
-        `;
-        fileList.appendChild(container);
-
-        document.getElementById(`chk-${tipo}`).addEventListener("change", e=>{
-            zipSelection[tipo] = e.target.checked;
-        });
-
-        document.getElementById(`download-${tipo}`).addEventListener("click", async ()=>{
-            const blob = await zipObj.generateAsync({type:"blob"});
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `${tipo}.zip`;
-            a.click();
-        });
-    });
-
-    if(arquivosCorrompidos.length>0){
-        errorsDiv.innerHTML = "<strong>Não foi possível ler os seguintes arquivos:</strong><br>" + arquivosCorrompidos.join("<br>");
+    to{
+        opacity:1;
+        transform:translateY(0);
     }
 }
 
-document.getElementById("downloadAll").addEventListener("click", async ()=>{
-    const selectedTypes = Object.keys(zipSelection).filter(tipo=>zipSelection[tipo]);
-    if(selectedTypes.length === 0){ alert("Nenhum ZIP selecionado."); return; }
-    for(const tipo of selectedTypes){
-        const zipObj = zipGroups[tipo];
-        const blob = await zipObj.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${tipo}.zip`;
-        a.click();
+@media(max-width:1100px){
+
+    body{
+        overflow:auto;
+        height:auto;
     }
+
+    .app{
+        height:auto;
+    }
+
+    .main{
+        grid-template-columns:1fr;
+    }
+
+}
+
+@media(max-width:700px){
+
+    .stats{
+        grid-template-columns:1fr 1fr;
+    }
+
+}
+
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <div class="header">
+
+        <div>
+
+            <h1>eSocial Organizer</h1>
+
+            <p>
+                Organize automaticamente arquivos do eSocial por evento.
+            </p>
+
+        </div>
+
+        <div class="badge">
+            PROCESSAMENTO AUTOMÁTICO
+        </div>
+
+    </div>
+
+    <div class="main">
+
+        <div class="card">
+
+            <div class="card-title">
+                Selecionar Arquivos
+            </div>
+
+            <label class="upload-area">
+
+                <input
+                    type="file"
+                    id="zipInput"
+                    accept=".zip"
+                    multiple
+                >
+
+                <div class="upload-icon">
+                    📦
+                </div>
+
+                <h2>Enviar ZIPs</h2>
+
+                <p>
+                    Clique aqui para selecionar os arquivos ZIP
+                    que serão organizados automaticamente.
+                </p>
+
+            </label>
+
+            <div class="features">
+
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <span>Processamento rápido</span>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">📂</div>
+                    <span>Separação automática por evento</span>
+                </div>
+
+                <div class="feature">
+                    <div class="feature-icon">🧩</div>
+                    <span>ZIP dentro de ZIP suportado</span>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="right">
+
+            <div class="stats">
+
+                <div class="stat">
+                    <h4>ZIPs</h4>
+                    <span id="zipCount">0</span>
+                </div>
+
+                <div class="stat">
+                    <h4>Arquivos</h4>
+                    <span id="fileCount">0</span>
+                </div>
+
+                <div class="stat">
+                    <h4>Pastas</h4>
+                    <span id="folderCount">0</span>
+                </div>
+
+                <div class="stat">
+                    <h4>Processados</h4>
+                    <span id="processedCount">0</span>
+                </div>
+
+            </div>
+
+            <div class="progress-card">
+
+                <div class="progress-top">
+
+                    <div class="progress-title">
+                        Progresso
+                    </div>
+
+                    <div
+                        class="progress-percent"
+                        id="progressPercent"
+                    >
+                        0%
+                    </div>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div
+                        class="progress-fill"
+                        id="progressFill"
+                    ></div>
+
+                </div>
+
+                <div
+                    class="progress-status"
+                    id="progressStatus"
+                >
+                    Aguardando arquivos...
+                </div>
+
+            </div>
+
+            <div class="logs">
+
+                <h3>Atividade</h3>
+
+                <div class="log-list" id="logList">
+
+                    <div class="log info">
+
+                        <strong>Sistema iniciado</strong>
+
+                        <span>
+                            Aguardando seleção dos arquivos ZIP.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="download-area">
+
+                <button
+                    class="btn"
+                    id="downloadBtn"
+                    disabled
+                >
+                    ⬇️ Download ZIP Organizado
+                </button>
+
+                <div
+                    class="summary"
+                    id="summary"
+                    style="display:none;"
+                ></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="footer">
+
+        <div>
+            Desenvolvido por <strong>@odiogofn</strong>
+        </div>
+
+        <div>
+            Arquivos processados:
+            <strong id="footerProcessed">
+                0
+            </strong>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+const zipInput = document.getElementById("zipInput");
+
+const zipCount = document.getElementById("zipCount");
+const fileCount = document.getElementById("fileCount");
+const folderCount = document.getElementById("folderCount");
+const processedCount = document.getElementById("processedCount");
+
+const footerProcessed =
+document.getElementById("footerProcessed");
+
+const progressFill =
+document.getElementById("progressFill");
+
+const progressPercent =
+document.getElementById("progressPercent");
+
+const progressStatus =
+document.getElementById("progressStatus");
+
+const logList =
+document.getElementById("logList");
+
+const downloadBtn =
+document.getElementById("downloadBtn");
+
+const summary =
+document.getElementById("summary");
+
+let finalZipBlob = null;
+
+let totalProcessedFiles = 0;
+
+let eventCounters = {};
+
+function addLog(title,text,type="info"){
+
+    const div = document.createElement("div");
+
+    div.className = `log ${type}`;
+
+    div.innerHTML = `
+        <strong>${title}</strong>
+        <span>${text}</span>
+    `;
+
+    logList.appendChild(div);
+
+    logList.scrollTop = logList.scrollHeight;
+
+}
+
+function updateProcessedCounter(){
+
+    processedCount.innerHTML =
+    totalProcessedFiles;
+
+    footerProcessed.innerHTML =
+    totalProcessedFiles;
+
+}
+
+function renderSummary(){
+
+    summary.innerHTML = "";
+
+    const sortedKeys =
+    Object.keys(eventCounters).sort();
+
+    if(!sortedKeys.length){
+
+        summary.style.display = "none";
+
+        return;
+
+    }
+
+    summary.style.display = "grid";
+
+    sortedKeys.forEach(eventName=>{
+
+        const div =
+        document.createElement("div");
+
+        div.className = "summary-item";
+
+        div.innerHTML = `
+            <strong>${eventName}</strong>
+            <span>
+                ${eventCounters[eventName]} arquivo(s)
+            </span>
+        `;
+
+        summary.appendChild(div);
+
+    });
+
+}
+
+async function processZip(zipFile,outputFolders){
+
+    const zip =
+    await JSZip.loadAsync(zipFile);
+
+    for(const [filename,file]
+    of Object.entries(zip.files)){
+
+        if(file.dir) continue;
+
+        if(
+            filename.toLowerCase()
+            .endsWith(".zip")
+        ){
+
+            const nestedZip =
+            await file.async("blob");
+
+            await processZip(
+                nestedZip,
+                outputFolders
+            );
+
+        }else{
+
+            const match =
+            filename.match(/S-\d{4}/i);
+
+            if(match){
+
+                const folderName =
+                match[0].toUpperCase();
+
+                if(!outputFolders[folderName]){
+
+                    outputFolders[folderName] = [];
+
+                }
+
+                if(!eventCounters[folderName]){
+
+                    eventCounters[folderName] = 0;
+
+                }
+
+                const blob =
+                await file.async("blob");
+
+                outputFolders[folderName].push({
+
+                    name:
+                    filename.split("/").pop(),
+
+                    blob
+
+                });
+
+                eventCounters[folderName]++;
+
+                totalProcessedFiles++;
+
+                updateProcessedCounter();
+
+            }
+
+        }
+
+    }
+
+}
+
+zipInput.addEventListener("change",async(e)=>{
+
+    const files = e.target.files;
+
+    if(!files.length) return;
+
+    totalProcessedFiles = 0;
+
+    eventCounters = {};
+
+    summary.innerHTML = "";
+
+    summary.style.display = "none";
+
+    updateProcessedCounter();
+
+    zipCount.innerHTML = files.length;
+
+    addLog(
+        "Processamento iniciado",
+        "Separando arquivos do eSocial...",
+        "info"
+    );
+
+    progressStatus.innerHTML =
+    "Lendo arquivos ZIP...";
+
+    const outputFolders = {};
+
+    let processed = 0;
+
+    for(const file of files){
+
+        await processZip(
+            file,
+            outputFolders
+        );
+
+        processed++;
+
+        const pct =
+        Math.round(
+            (processed / files.length) * 100
+        );
+
+        progressFill.style.width =
+        pct + "%";
+
+        progressPercent.innerHTML =
+        pct + "%";
+
+        progressStatus.innerHTML =
+        `Separando arquivos (${processed}/${files.length})`;
+
+    }
+
+    addLog(
+        "Organizando arquivos",
+        "Criando estrutura final...",
+        "warning"
+    );
+
+    const finalZip = new JSZip();
+
+    let totalFiles = 0;
+
+    for(const folder in outputFolders){
+
+        const zipFolder =
+        finalZip.folder(folder);
+
+        for(const file
+        of outputFolders[folder]){
+
+            zipFolder.file(
+                file.name,
+                file.blob
+            );
+
+            totalFiles++;
+
+        }
+
+    }
+
+    folderCount.innerHTML =
+    Object.keys(outputFolders).length;
+
+    fileCount.innerHTML =
+    totalFiles;
+
+    progressFill.style.width =
+    "100%";
+
+    progressPercent.innerHTML =
+    "100%";
+
+    progressStatus.innerHTML =
+    "ZIP final gerado com sucesso.";
+
+    addLog(
+        "Concluído",
+        `${totalFiles} arquivo(s) organizados em ${Object.keys(outputFolders).length} pasta(s).`,
+        "success"
+    );
+
+    renderSummary();
+
+    finalZipBlob =
+    await finalZip.generateAsync({
+
+        type:"blob"
+
+    });
+
+    downloadBtn.disabled = false;
+
 });
+
+downloadBtn.addEventListener("click",()=>{
+
+    if(!finalZipBlob) return;
+
+    saveAs(
+        finalZipBlob,
+        "ESOCIAL_ORGANIZADO.zip"
+    );
+
+    addLog(
+        "Download iniciado",
+        "O ZIP organizado foi gerado com sucesso.",
+        "success"
+    );
+
+});
+
 </script>
+
 </body>
 </html>

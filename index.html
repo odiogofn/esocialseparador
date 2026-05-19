@@ -55,8 +55,6 @@ body{
     align-items:center;
     gap:20px;
     flex-wrap:wrap;
-
-    background:white;
 }
 
 .header h1{
@@ -123,7 +121,7 @@ body{
 
     border-radius:22px;
 
-    height:240px;
+    height:260px;
 
     display:flex;
     flex-direction:column;
@@ -149,6 +147,12 @@ body{
     background:#eff6ff;
 }
 
+.upload-area.dragover{
+    border-color:#2563eb;
+    background:#dbeafe;
+    transform:scale(1.01);
+}
+
 .upload-icon{
     font-size:58px;
     margin-bottom:16px;
@@ -161,8 +165,22 @@ body{
 
 .upload-area p{
     color:#64748b;
-    line-height:1.6;
+    line-height:1.7;
     font-size:14px;
+}
+
+.upload-highlight{
+    margin-top:14px;
+
+    background:#2563eb;
+    color:white;
+
+    padding:10px 16px;
+
+    border-radius:12px;
+
+    font-size:13px;
+    font-weight:700;
 }
 
 input{
@@ -308,8 +326,56 @@ input{
 }
 
 .progress-status{
-    color:#64748b;
-    font-size:13px;
+    color:#1e293b;
+    font-size:14px;
+    font-weight:600;
+}
+
+.live-status{
+    margin-top:14px;
+
+    background:#eff6ff;
+
+    border:1px solid #bfdbfe;
+
+    border-radius:14px;
+
+    padding:14px 16px;
+
+    display:flex;
+    align-items:center;
+    gap:12px;
+
+    color:#1d4ed8;
+
+    font-size:14px;
+    font-weight:700;
+}
+
+.live-dot{
+    width:12px;
+    height:12px;
+
+    border-radius:50%;
+
+    background:#2563eb;
+
+    animation:pulse 1.2s infinite;
+}
+
+@keyframes pulse{
+    0%{
+        transform:scale(1);
+        opacity:1;
+    }
+    50%{
+        transform:scale(1.3);
+        opacity:0.5;
+    }
+    100%{
+        transform:scale(1);
+        opacity:1;
+    }
 }
 
 .logs{
@@ -364,8 +430,8 @@ input{
 }
 
 .log span{
-    color:#64748b;
-    font-size:12px;
+    color:#475569;
+    font-size:13px;
     line-height:1.6;
 }
 
@@ -578,7 +644,10 @@ input{
                 Selecionar Arquivos
             </div>
 
-            <label class="upload-area">
+            <label
+                class="upload-area"
+                id="uploadArea"
+            >
 
                 <input
                     type="file"
@@ -591,12 +660,16 @@ input{
                     📦
                 </div>
 
-                <h2>Enviar ZIPs</h2>
+                <h2>Arraste e solte ZIPs</h2>
 
                 <p>
-                    Clique aqui para selecionar os arquivos ZIP
-                    que serão organizados automaticamente.
+                    Solte seus arquivos ZIP aqui ou clique para selecionar.
+                    Compatível com ZIP dentro de ZIP.
                 </p>
+
+                <div class="upload-highlight">
+                    Arraste os arquivos para esta área
+                </div>
 
             </label>
 
@@ -680,6 +753,16 @@ input{
                     Aguardando arquivos...
                 </div>
 
+                <div class="live-status">
+
+                    <div class="live-dot"></div>
+
+                    <div id="liveStatusText">
+                        Sistema aguardando envio dos arquivos ZIP.
+                    </div>
+
+                </div>
+
             </div>
 
             <div class="logs">
@@ -744,6 +827,7 @@ input{
 <script>
 
 const zipInput = document.getElementById("zipInput");
+const uploadArea = document.getElementById("uploadArea");
 
 const zipCount = document.getElementById("zipCount");
 const fileCount = document.getElementById("fileCount");
@@ -761,6 +845,9 @@ document.getElementById("progressPercent");
 
 const progressStatus =
 document.getElementById("progressStatus");
+
+const liveStatusText =
+document.getElementById("liveStatusText");
 
 const logList =
 document.getElementById("logList");
@@ -947,9 +1034,7 @@ async function processZip(zipFile,outputFolders){
 
 }
 
-zipInput.addEventListener("change",async(e)=>{
-
-    const files = e.target.files;
+async function startProcessing(files){
 
     if(!files.length) return;
 
@@ -966,6 +1051,9 @@ zipInput.addEventListener("change",async(e)=>{
     updateProcessedCounter();
 
     zipCount.innerHTML = files.length;
+
+    liveStatusText.innerHTML =
+    "Separando arquivos do eSocial...";
 
     addLog(
         "Processamento iniciado",
@@ -1001,6 +1089,9 @@ zipInput.addEventListener("change",async(e)=>{
         progressStatus.innerHTML =
         `Separando arquivos (${processed}/${files.length})`;
 
+        liveStatusText.innerHTML =
+        `Processando ZIP ${processed} de ${files.length}...`;
+
     }
 
     addLog(
@@ -1008,6 +1099,9 @@ zipInput.addEventListener("change",async(e)=>{
         "Criando estrutura final...",
         "warning"
     );
+
+    liveStatusText.innerHTML =
+    "Criando ZIP final organizado...";
 
     const finalZip = new JSZip();
 
@@ -1047,6 +1141,9 @@ zipInput.addEventListener("change",async(e)=>{
     progressStatus.innerHTML =
     "ZIP final gerado com sucesso.";
 
+    liveStatusText.innerHTML =
+    "Processamento concluído com sucesso.";
+
     addLog(
         "Concluído",
         `${totalFiles} arquivo(s) organizados em ${Object.keys(outputFoldersGlobal).length} pasta(s).`,
@@ -1063,6 +1160,42 @@ zipInput.addEventListener("change",async(e)=>{
     });
 
     downloadBtn.disabled = false;
+
+}
+
+zipInput.addEventListener("change",(e)=>{
+
+    startProcessing([...e.target.files]);
+
+});
+
+uploadArea.addEventListener("dragover",(e)=>{
+
+    e.preventDefault();
+
+    uploadArea.classList.add("dragover");
+
+});
+
+uploadArea.addEventListener("dragleave",()=>{
+
+    uploadArea.classList.remove("dragover");
+
+});
+
+uploadArea.addEventListener("drop",(e)=>{
+
+    e.preventDefault();
+
+    uploadArea.classList.remove("dragover");
+
+    const files =
+    [...e.dataTransfer.files]
+    .filter(file =>
+        file.name.toLowerCase().endsWith(".zip")
+    );
+
+    startProcessing(files);
 
 });
 

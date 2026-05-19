@@ -20,51 +20,43 @@
 
 body{
     height:100vh;
-
-    background:
-    radial-gradient(circle at top left,#1e3a8a 0%,transparent 25%),
-    radial-gradient(circle at bottom right,#0f172a 0%,transparent 25%),
-    #020617;
-
-    color:white;
-
+    background:#f5f7fb;
     overflow:hidden;
-
     padding:20px;
+    color:#0f172a;
 }
 
 .app{
     width:100%;
     height:100%;
 
-    background:rgba(255,255,255,0.04);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.08);
+    border:1px solid #e2e8f0;
 
-    border-radius:28px;
+    border-radius:24px;
 
     overflow:hidden;
 
-    backdrop-filter:blur(18px);
-
-    box-shadow:
-    0 25px 90px rgba(0,0,0,0.45),
-    inset 0 1px 0 rgba(255,255,255,0.05);
-
     display:flex;
     flex-direction:column;
+
+    box-shadow:
+    0 10px 30px rgba(15,23,42,0.08);
 }
 
 .header{
     padding:22px 30px;
 
-    border-bottom:1px solid rgba(255,255,255,0.06);
+    border-bottom:1px solid #e2e8f0;
 
     display:flex;
     justify-content:space-between;
     align-items:center;
     gap:20px;
     flex-wrap:wrap;
+
+    background:white;
 }
 
 .header h1{
@@ -75,17 +67,15 @@ body{
 }
 
 .header p{
-    color:#94a3b8;
+    color:#64748b;
     font-size:14px;
     line-height:1.6;
 }
 
 .badge{
-    background:rgba(59,130,246,0.15);
-
-    border:1px solid rgba(59,130,246,0.25);
-
-    color:#60a5fa;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#2563eb;
 
     padding:12px 16px;
 
@@ -111,9 +101,9 @@ body{
 }
 
 .card{
-    background:rgba(255,255,255,0.03);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.05);
+    border:1px solid #e2e8f0;
 
     border-radius:22px;
 
@@ -129,7 +119,7 @@ body{
 }
 
 .upload-area{
-    border:2px dashed rgba(96,165,250,0.35);
+    border:2px dashed #93c5fd;
 
     border-radius:22px;
 
@@ -148,15 +138,15 @@ body{
 
     transition:0.3s;
 
-    background:rgba(255,255,255,0.02);
+    background:#f8fbff;
 }
 
 .upload-area:hover{
     transform:translateY(-2px);
 
-    border-color:#60a5fa;
+    border-color:#2563eb;
 
-    background:rgba(96,165,250,0.06);
+    background:#eff6ff;
 }
 
 .upload-icon{
@@ -170,7 +160,7 @@ body{
 }
 
 .upload-area p{
-    color:#94a3b8;
+    color:#64748b;
     line-height:1.6;
     font-size:14px;
 }
@@ -191,9 +181,9 @@ input{
     align-items:center;
     gap:12px;
 
-    background:rgba(255,255,255,0.03);
+    background:#f8fafc;
 
-    border:1px solid rgba(255,255,255,0.05);
+    border:1px solid #e2e8f0;
 
     border-radius:16px;
 
@@ -210,13 +200,13 @@ input{
     align-items:center;
     justify-content:center;
 
-    background:rgba(59,130,246,0.15);
+    background:#dbeafe;
 
     font-size:16px;
 }
 
 .feature span{
-    color:#cbd5e1;
+    color:#334155;
     font-size:13px;
 }
 
@@ -236,9 +226,9 @@ input{
 }
 
 .stat{
-    background:rgba(255,255,255,0.03);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.05);
+    border:1px solid #e2e8f0;
 
     border-radius:18px;
 
@@ -246,7 +236,7 @@ input{
 }
 
 .stat h4{
-    color:#94a3b8;
+    color:#64748b;
     font-size:12px;
     margin-bottom:8px;
     font-weight:500;
@@ -258,9 +248,9 @@ input{
 }
 
 .progress-card{
-    background:rgba(255,255,255,0.03);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.05);
+    border:1px solid #e2e8f0;
 
     border-radius:20px;
 
@@ -283,7 +273,7 @@ input{
 }
 
 .progress-percent{
-    color:#60a5fa;
+    color:#2563eb;
     font-size:18px;
     font-weight:800;
 }
@@ -292,7 +282,7 @@ input{
     width:100%;
     height:16px;
 
-    background:#0f172a;
+    background:#e2e8f0;
 
     border-radius:999px;
 
@@ -312,22 +302,22 @@ input{
     background:
     linear-gradient(
         90deg,
-        #3b82f6,
-        #06b6d4
+        #2563eb,
+        #38bdf8
     );
 }
 
 .progress-status{
-    color:#94a3b8;
+    color:#64748b;
     font-size:13px;
 }
 
 .logs{
     flex:1;
 
-    background:rgba(255,255,255,0.03);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.05);
+    border:1px solid #e2e8f0;
 
     border-radius:20px;
 
@@ -357,9 +347,9 @@ input{
 }
 
 .log{
-    background:rgba(255,255,255,0.03);
+    background:#f8fafc;
 
-    border:1px solid rgba(255,255,255,0.04);
+    border:1px solid #e2e8f0;
 
     border-radius:14px;
 
@@ -374,13 +364,13 @@ input{
 }
 
 .log span{
-    color:#94a3b8;
+    color:#64748b;
     font-size:12px;
     line-height:1.6;
 }
 
 .info{
-    border-left:4px solid #3b82f6;
+    border-left:4px solid #2563eb;
 }
 
 .success{
@@ -414,8 +404,8 @@ input{
     background:
     linear-gradient(
         90deg,
-        #3b82f6,
-        #06b6d4
+        #2563eb,
+        #38bdf8
     );
 
     color:white;
@@ -438,14 +428,14 @@ input{
     display:grid;
     gap:10px;
 
-    max-height:180px;
+    max-height:220px;
     overflow:auto;
 }
 
 .summary-item{
-    background:rgba(255,255,255,0.03);
+    background:white;
 
-    border:1px solid rgba(255,255,255,0.04);
+    border:1px solid #e2e8f0;
 
     border-radius:14px;
 
@@ -454,22 +444,53 @@ input{
     display:flex;
     justify-content:space-between;
     align-items:center;
+    gap:15px;
 }
 
-.summary-item strong{
-    color:#60a5fa;
+.summary-left{
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+}
+
+.summary-left strong{
+    color:#2563eb;
     font-size:14px;
 }
 
-.summary-item span{
-    color:#cbd5e1;
-    font-size:13px;
+.summary-left span{
+    color:#64748b;
+    font-size:12px;
+}
+
+.summary-download{
+    border:none;
+
+    background:#2563eb;
+
+    color:white;
+
+    padding:10px 14px;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    font-size:12px;
+    font-weight:700;
+
+    transition:0.3s;
+}
+
+.summary-download:hover{
+    opacity:0.9;
+    transform:translateY(-1px);
 }
 
 .footer{
     padding:14px 24px;
 
-    border-top:1px solid rgba(255,255,255,0.06);
+    border-top:1px solid #e2e8f0;
 
     display:flex;
     justify-content:space-between;
@@ -478,13 +499,15 @@ input{
     flex-wrap:wrap;
     gap:12px;
 
-    color:#94a3b8;
+    color:#64748b;
 
     font-size:13px;
+
+    background:white;
 }
 
 .footer strong{
-    color:#60a5fa;
+    color:#2563eb;
 }
 
 @keyframes fade{
@@ -686,7 +709,7 @@ input{
                     id="downloadBtn"
                     disabled
                 >
-                    ⬇️ Download ZIP Organizado
+                    ⬇️ Download ZIP Completo
                 </button>
 
                 <div
@@ -754,6 +777,8 @@ let totalProcessedFiles = 0;
 
 let eventCounters = {};
 
+let outputFoldersGlobal = {};
+
 function addLog(title,text,type="info"){
 
     const div = document.createElement("div");
@@ -778,6 +803,30 @@ function updateProcessedCounter(){
 
     footerProcessed.innerHTML =
     totalProcessedFiles;
+
+}
+
+async function downloadSingleEventZip(eventName){
+
+    const zip = new JSZip();
+
+    const files =
+    outputFoldersGlobal[eventName];
+
+    if(!files || !files.length) return;
+
+    for(const file of files){
+
+        zip.file(file.name,file.blob);
+
+    }
+
+    const blob =
+    await zip.generateAsync({
+        type:"blob"
+    });
+
+    saveAs(blob,`${eventName}.zip`);
 
 }
 
@@ -806,10 +855,19 @@ function renderSummary(){
         div.className = "summary-item";
 
         div.innerHTML = `
-            <strong>${eventName}</strong>
-            <span>
-                ${eventCounters[eventName]} arquivo(s)
-            </span>
+            <div class="summary-left">
+                <strong>${eventName}</strong>
+                <span>
+                    ${eventCounters[eventName]} arquivo(s)
+                </span>
+            </div>
+
+            <button
+                class="summary-download"
+                onclick="downloadSingleEventZip('${eventName}')"
+            >
+                Baixar ZIP
+            </button>
         `;
 
         summary.appendChild(div);
@@ -899,6 +957,8 @@ zipInput.addEventListener("change",async(e)=>{
 
     eventCounters = {};
 
+    outputFoldersGlobal = {};
+
     summary.innerHTML = "";
 
     summary.style.display = "none";
@@ -916,15 +976,13 @@ zipInput.addEventListener("change",async(e)=>{
     progressStatus.innerHTML =
     "Lendo arquivos ZIP...";
 
-    const outputFolders = {};
-
     let processed = 0;
 
     for(const file of files){
 
         await processZip(
             file,
-            outputFolders
+            outputFoldersGlobal
         );
 
         processed++;
@@ -955,13 +1013,13 @@ zipInput.addEventListener("change",async(e)=>{
 
     let totalFiles = 0;
 
-    for(const folder in outputFolders){
+    for(const folder in outputFoldersGlobal){
 
         const zipFolder =
         finalZip.folder(folder);
 
         for(const file
-        of outputFolders[folder]){
+        of outputFoldersGlobal[folder]){
 
             zipFolder.file(
                 file.name,
@@ -975,7 +1033,7 @@ zipInput.addEventListener("change",async(e)=>{
     }
 
     folderCount.innerHTML =
-    Object.keys(outputFolders).length;
+    Object.keys(outputFoldersGlobal).length;
 
     fileCount.innerHTML =
     totalFiles;
@@ -991,7 +1049,7 @@ zipInput.addEventListener("change",async(e)=>{
 
     addLog(
         "Concluído",
-        `${totalFiles} arquivo(s) organizados em ${Object.keys(outputFolders).length} pasta(s).`,
+        `${totalFiles} arquivo(s) organizados em ${Object.keys(outputFoldersGlobal).length} pasta(s).`,
         "success"
     );
 
@@ -1019,7 +1077,7 @@ downloadBtn.addEventListener("click",()=>{
 
     addLog(
         "Download iniciado",
-        "O ZIP organizado foi gerado com sucesso.",
+        "O ZIP completo foi gerado com sucesso.",
         "success"
     );
 
